@@ -8,8 +8,11 @@ import (
 )
 
 const (
-	MQTT_BROKER = "tcp://localhost:1883"
-	MQTT_TOPIC  = "path/to/topic"
+	MQTT_BROKER   = "tcp://localhost:1883"
+	MQTT_TOPIC    = "path/to/topic"
+	MQTT_RETAIN   = false
+	MQTT_QOS_ZERO = 0
+	MQTT_QOS_TWO  = 2
 )
 
 func createMQTTClient(brokerAddr, clientId, username, password string) MQTT.Client {
@@ -17,7 +20,7 @@ func createMQTTClient(brokerAddr, clientId, username, password string) MQTT.Clie
 	opts.SetClientID(clientId)
 	opts.SetUsername(username)
 	opts.SetPassword(password)
-	opts.SetWill(MQTT_TOPIC, "[Lost] clientId: "+clientId, 2, true)
+	opts.SetWill(MQTT_TOPIC, "[Lost] clientId: "+clientId, MQTT_QOS_TWO, MQTT_RETAIN)
 	client := MQTT.NewClient(opts)
 	return client
 }
@@ -26,7 +29,7 @@ func subscribe(client MQTT.Client, sub chan<- MQTT.Message) {
 	fmt.Println("start subscribing...")
 	subToken := client.Subscribe(
 		MQTT_TOPIC,
-		0,
+		MQTT_QOS_ZERO,
 		func(client MQTT.Client, msg MQTT.Message) {
 			sub <- msg
 		})
@@ -37,7 +40,7 @@ func subscribe(client MQTT.Client, sub chan<- MQTT.Message) {
 }
 
 func publish(client MQTT.Client, input string) {
-	token := client.Publish(MQTT_TOPIC, 0, true, input)
+	token := client.Publish(MQTT_TOPIC, MQTT_QOS_ZERO, MQTT_RETAIN, input)
 	if token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
