@@ -7,13 +7,17 @@ import (
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 )
 
-const MQTT_BROKER = "tcp://localhost:1883"
+const (
+	MQTT_BROKER = "tcp://localhost:1883"
+	MQTT_TOPIC  = "path/to/topic"
+)
 
 func createMQTTClient(brokerAddr, clientId, username, password string) MQTT.Client {
 	opts := MQTT.NewClientOptions().AddBroker(brokerAddr)
 	opts.SetClientID(clientId)
 	opts.SetUsername(username)
 	opts.SetPassword(password)
+	opts.SetWill(MQTT_TOPIC, "[Lost] clientId: "+clientId, 2, true)
 	client := MQTT.NewClient(opts)
 	return client
 }
@@ -21,7 +25,7 @@ func createMQTTClient(brokerAddr, clientId, username, password string) MQTT.Clie
 func subscribe(client MQTT.Client, sub chan<- MQTT.Message) {
 	fmt.Println("start subscribing...")
 	subToken := client.Subscribe(
-		"path/to/topic",
+		MQTT_TOPIC,
 		0,
 		func(client MQTT.Client, msg MQTT.Message) {
 			sub <- msg
@@ -33,7 +37,7 @@ func subscribe(client MQTT.Client, sub chan<- MQTT.Message) {
 }
 
 func publish(client MQTT.Client, input string) {
-	token := client.Publish("path/to/topic", 0, true, input)
+	token := client.Publish(MQTT_TOPIC, 0, true, input)
 	if token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
