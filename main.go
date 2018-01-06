@@ -1,7 +1,10 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
@@ -15,9 +18,37 @@ const (
 	MQTT_QOS_TWO  = 2
 )
 
+func NewTLSConfig() *tls.Config {
+	certpool := x509.NewCertPool()
+	pemCerts, err := ioutil.ReadFile("samplecerts/CAfile.pem")
+	if err == nil {
+		certpool.AppendCertsFromPEM(pemCerts)
+	}
+
+	cert, err := tls.LoadX509KeyPair("samplecerts/client-crt.pem", "samplecerts/client-key.pem")
+	if err != nil {
+		panic(err)
+	}
+
+	cert.Leaf, err = x509.ParseCertificate(cert.Certificate[0])
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(cert.Leaf)
+
+	return &tls.Config{
+		RootCAs:            certpool,
+		ClientAuth:         tls.NoClientCert,
+		ClientCAs:          nil,
+		InsecureSkipVerify: true,
+		Certificates:       []tls.Certificate{cert},
+	}
+}
+
 func createMQTTClient(brokerAddr, clientId, username, password string) MQTT.Client {
+	tlsconfig := NewTLSConfig()
 	opts := MQTT.NewClientOptions().AddBroker(brokerAddr)
-	opts.SetClientID(clientId)
+	opts.SetClientID(clientId).SetTLSConfig(tlsconfig)
 	opts.SetUsername(username)
 	opts.SetPassword(password)
 	opts.SetWill(MQTT_TOPIC, "[Lost] clientId: "+clientId, MQTT_QOS_TWO, MQTT_RETAIN)
